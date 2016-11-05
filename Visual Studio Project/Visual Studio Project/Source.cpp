@@ -2,45 +2,6 @@
 
 
 
-struct Distance
-{
-    int ID1;
-    int ID2;
-    int RSSi;
-};
-
-typedef unsigned char byte;
-
-int Serialize(Distance distance, byte* array, int length)
-{
-    if (length < sizeof(Distance))
-    {
-        return 0;
-    }
-
-    for (int i = 0; i < sizeof(Distance); i++)
-    {
-        array[i] = ((byte*)(&distance))[i];
-    }
-
-    return sizeof(Distance);
-}
-
-int Deserialize(byte* array, int length, Distance* distance)
-{
-    if (length < sizeof(Distance))
-    {
-        return 0;
-    }
-
-    for (int i = 0; i < sizeof(Distance); i++)
-    {
-        array[i] = ((byte*)(&distance))[i];
-    }
-
-    return sizeof(Distance);
-}
-
 int main()
 {
     Connection_t connection;
