@@ -386,15 +386,9 @@ void Dot::computeUserCoordinates(vector<Distance> data) {
 	double r1 = 0, r2 = 0, r3 = 0, d = 0, i = 0, j = 0;
 	int px = 0, py = 0;
 	
-	if (data.size() >= 0) {
+	if (data.size() > 0) {
 
 		//set variables from data
-		d = 10;
-		i = 4;
-		j = 14;
-		r1 = 4.5;
-		r2 = 4;
-		r3 = 2.7;
 
 
 		//triangulate position using trilateration
