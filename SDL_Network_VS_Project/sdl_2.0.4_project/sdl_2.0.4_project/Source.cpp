@@ -15,6 +15,49 @@ using namespace std;
 const int SCREEN_WIDTH = 600;
 const int SCREEN_HEIGHT = 600;
 
+int dotIndex = 0;
+const int dotMaxIndex = 2000;
+
+struct Distance
+{
+	int ID1;
+	int ID2;
+	int RSSi;
+};
+
+typedef unsigned char byte;
+
+int Serialize(Distance distance, byte* array, int length)
+{
+	if (length < sizeof(Distance))
+	{
+		return 0;
+	}
+
+	for (int i = 0; i < sizeof(Distance); i++)
+	{
+		array[i] = ((byte*)(&distance))[i];
+	}
+
+	return sizeof(Distance);
+}
+
+int Deserialize(byte* array, int length, Distance* distance)
+{
+	if (length < sizeof(Distance))
+	{
+		return 0;
+	}
+
+	for (int i = 0; i < sizeof(Distance); i++)
+	{
+		array[i] = ((byte*)(&distance))[i];
+	}
+
+	return sizeof(Distance);
+}
+
+
 //Texture wrapper class
 class LTexture
 {
@@ -98,11 +141,11 @@ class Dot
 {
 public:
 	//The dimensions of the dot
-	static const int DOT_WIDTH = 20;
-	static const int DOT_HEIGHT = 20;
+	static const int DOT_WIDTH = 5;
+	static const int DOT_HEIGHT = 5;
 
 	//Maximum axis velocity of the dot
-	static const int DOT_VEL = 10;
+	static const int DOT_VEL = 5;
 
 	//Initializes the variables
 	Dot();
@@ -111,15 +154,14 @@ public:
 	void handleEvent(SDL_Event& e);
 
 	//checks for incoming data from beacons
-	void checkForInputData();
+	void computeUserCoordinates(vector<Distance> data);
 
 	//Moves the dot
 	void move();
 
 	//Shows the dot on the screen
-	void render();
+	void render(int x, int y);
 
-private:
 	//The X and Y offsets of the dot
 	int mPosX, mPosY;
 
@@ -144,6 +186,7 @@ SDL_Renderer* gRenderer = NULL;
 
 //Scene textures
 LTexture gDotTexture;
+LTexture gDotTexture2;
 
 LTexture::LTexture()
 {
@@ -294,6 +337,11 @@ int LTexture::getHeight()
 }
 
 
+double RSSiToDistance(int RSSi)
+{
+	return (100 - RSSi) / 5.0;
+}
+
 Dot::Dot()
 {
 	//Initialize the offsets
@@ -333,15 +381,45 @@ void Dot::handleEvent(SDL_Event& e)
 	}
 }
 
-void Dot::checkForInputData() {
+void Dot::computeUserCoordinates(vector<Distance> data) {
 	
-
+	double r1 = 0, r2 = 0, r3 = 0, d = 0, i = 0, j = 0;
+	int px = 0, py = 0;
 	
-	//Move the dot left or right
-	mPosX += 1;
-	//Move the dot up or down
-	mPosY -= 0;
+	if (data.size() >= 0) {
 
+		//set variables from data
+		d = 10;
+		i = 4;
+		j = 14;
+		r1 = 4.5;
+		r2 = 4;
+		r3 = 2.7;
+
+
+		//triangulate position using trilateration
+		double tempx = ((r1*r1) - (r2*r2) + (d*d)) / (2*d);
+		double tempy = (((r1*r1) - (r3*r3) + (i*i) + (j*j)) / (2 * j)) - ((i / j) * tempx);
+
+		//clamp values
+		if (tempx > d)
+			tempx = d;
+		if (tempx < 0)
+			tempx = 0;
+		if (tempy > j)
+			tempy = j;
+		if (tempy < 0)
+			tempy = 0;
+
+		//convert from cartesian coordinate system to screen space
+		px = (int)((tempx / d) * SCREEN_WIDTH);
+		py = (int)((tempy / j) * SCREEN_HEIGHT);
+
+		//Move the dot left or right
+		mPosX = px;
+		//Move the dot up or down
+		mPosY = py;
+	}
 }
 
 void Dot::move()
@@ -367,10 +445,11 @@ void Dot::move()
 	}
 }
 
-void Dot::render()
+void Dot::render(int x, int y)
 {
 	//Show the dot
-	gDotTexture.render(mPosX, SCREEN_HEIGHT - mPosY - DOT_HEIGHT);
+	gDotTexture.render(x, SCREEN_HEIGHT - y - DOT_HEIGHT);
+	//gDotTexture2.render(x, SCREEN_HEIGHT - y - DOT_HEIGHT);
 }
 
 bool init()
@@ -439,6 +518,12 @@ bool loadMedia()
 		success = false;
 	}
 
+	if (!gDotTexture2.loadFromFile("dot2.bmp"))
+	{
+		printf("Failed to load dot texture 2!\n");
+		success = false;
+	}
+
 	return success;
 }
 
@@ -456,45 +541,6 @@ void close()
 	//Quit SDL subsystems
 	IMG_Quit();
 	SDL_Quit();
-}
-
-struct Distance
-{
-	int ID1;
-	int ID2;
-	int RSSi;
-};
-
-typedef unsigned char byte;
-
-int Serialize(Distance distance, byte* array, int length)
-{
-	if (length < sizeof(Distance))
-	{
-		return 0;
-	}
-
-	for (int i = 0; i < sizeof(Distance); i++)
-	{
-		array[i] = ((byte*)(&distance))[i];
-	}
-
-	return sizeof(Distance);
-}
-
-int Deserialize(byte* array, int length, Distance* distance)
-{
-	if (length < sizeof(Distance))
-	{
-		return 0;
-	}
-
-	for (int i = 0; i < sizeof(Distance); i++)
-	{
-		array[i] = ((byte*)(&distance))[i];
-	}
-
-	return sizeof(Distance);
 }
 
 int main(int argc, char* args[])
@@ -525,9 +571,13 @@ int main(int argc, char* args[])
 
 			//The dot that will be moving around on the screen
 			Dot dot;
+			int dotX[dotMaxIndex] = { 0 };
+			int dotY[dotMaxIndex] = { 0 };
 
 			vector<Distance> recievedArr;
 
+			SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+			SDL_RenderClear(gRenderer);
 
 			//While application is running
 			while (!quit)
@@ -535,11 +585,10 @@ int main(int argc, char* args[])
 				// Get all connected devices
 				std::vector<int> ConnectionIndexes = connection.GetIndexes();
 
-				recievedArr.clear();
-				for (int i = 0; i < ConnectionIndexes.size(); i++)
+				while (recievedArr.size() < ConnectionIndexes.size())
 					recievedArr.push_back(Distance());
 
-				for (int i = 0; i < ConnectionIndexes.size(); i++)
+				for (unsigned int i = 0; i < ConnectionIndexes.size(); i++)
 				{
 					//Distance recieved;
 					while (connection.Recv(ConnectionIndexes[i], (char*)&(recievedArr[i]), sizeof(Distance)) > 0)
@@ -561,17 +610,28 @@ int main(int argc, char* args[])
 					dot.handleEvent(e);
 				}
 
-				dot.checkForInputData();
+				dot.computeUserCoordinates(recievedArr);
 
 				//Move the dot
 				dot.move();
+
+				dotX[dotIndex] = dot.mPosX;
+				dotY[dotIndex] = dot.mPosY;
 
 				//Clear screen
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 				SDL_RenderClear(gRenderer);
 
 				//Render objects
-				dot.render();
+				for (int i = 0; i < dotMaxIndex; i++) {
+					dot.render(dotX[i], dotY[i]);
+				}
+
+				if (dotX[dotIndex-1] != dot.mPosX || dotY[dotIndex-1] != dot.mPosY)
+					dotIndex++;
+
+				if (dotIndex >= dotMaxIndex)
+					dotIndex = 1;
 
 				//Update screen
 				SDL_RenderPresent(gRenderer);
