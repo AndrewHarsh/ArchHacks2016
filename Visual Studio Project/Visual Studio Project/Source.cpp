@@ -1,16 +1,12 @@
 #include "Network.h"
 
 
-struct Ping
-{
-    int ID;
-    int RSSi;
-};
 
 struct Distance
 {
-    int ID;
-    Ping Beacon;
+    int ID1;
+    int ID2;
+    int RSSi;
 };
 
 typedef unsigned char byte;
@@ -49,7 +45,7 @@ int main()
 {
     Connection_t connection;
 
-    connection.Listen(10000);
+    connection.Listen(9000);
     while (true)
     {
         // Get all connected devices
@@ -59,7 +55,7 @@ int main()
             Distance recieved;
             while (connection.Recv(ConnectionIndexes[i], (char*)&recieved, sizeof(Distance)) > 0)
             {
-                printf("ConnectionID: %d\n\tID1: %d\n\tID2: %d\n\nRSSi: %d\n", ConnectionIndexes[i], recieved.Beacon.ID, recieved.ID, recieved.Beacon.RSSi);
+                printf("ConnectionID: %d\n\tID1: %d\n\tID2: %d\n\tRSSi: %d\n", ConnectionIndexes[i], recieved.ID1, recieved.ID2, recieved.RSSi);
             }
         }
     }
