@@ -7,6 +7,9 @@ and may not be redistributed without written permission.*/
 #include <stdio.h>
 #include <string>
 #include "Network.h"
+#include <vector>
+
+using namespace std;
 
 //Screen dimension constants
 const int SCREEN_WIDTH = 600;
@@ -335,7 +338,7 @@ void Dot::checkForInputData() {
 
 	
 	//Move the dot left or right
-	mPosX += 0;
+	mPosX += 1;
 	//Move the dot up or down
 	mPosY -= 0;
 
@@ -523,17 +526,25 @@ int main(int argc, char* args[])
 			//The dot that will be moving around on the screen
 			Dot dot;
 
+			vector<Distance> recievedArr;
+
+
 			//While application is running
 			while (!quit)
 			{
 				// Get all connected devices
 				std::vector<int> ConnectionIndexes = connection.GetIndexes();
+
+				recievedArr.clear();
+				for (int i = 0; i < ConnectionIndexes.size(); i++)
+					recievedArr.push_back(Distance());
+
 				for (int i = 0; i < ConnectionIndexes.size(); i++)
 				{
-					Distance recieved;
-					while (connection.Recv(ConnectionIndexes[i], (char*)&recieved, sizeof(Distance)) > 0)
+					//Distance recieved;
+					while (connection.Recv(ConnectionIndexes[i], (char*)&(recievedArr[i]), sizeof(Distance)) > 0)
 					{
-						printf("ConnectionID: %d\n\tID1: %d\n\tID2: %d\n\tRSSi: %d\n", ConnectionIndexes[i], recieved.ID1, recieved.ID2, recieved.RSSi);
+						printf("ConnectionID: %d\n\tID1: %d\n\tID2: %d\n\tRSSi: %d\n", ConnectionIndexes[i], recievedArr[i].ID1, recievedArr[i].ID2, recievedArr[i].RSSi);
 					}
 				}
 
@@ -550,7 +561,7 @@ int main(int argc, char* args[])
 					dot.handleEvent(e);
 				}
 
-				//dot.checkForInputData();
+				dot.checkForInputData();
 
 				//Move the dot
 				dot.move();
