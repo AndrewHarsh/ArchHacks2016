@@ -2,12 +2,4 @@
 *
 
 # But not these files...
-!.gitignore
-!*.c
-!*.cpp
-!*.h
-!*.hpp
-!*.java
-!*.bat
-
-!Source Code/
+!Source Code/*
