@@ -16,7 +16,7 @@ const int SCREEN_WIDTH = 600;
 const int SCREEN_HEIGHT = 600;
 
 int dotIndex = 0;
-const int dotMaxIndex = 2000;
+const int dotMaxIndex = 5000;
 
 struct Distance
 {
@@ -154,7 +154,7 @@ public:
 	void handleEvent(SDL_Event& e);
 
 	//checks for incoming data from beacons
-	void computeUserCoordinates(vector<Distance> data);
+	void computeUserCoordinates(std::vector<std::vector<Distance>> data);
 
 	//Moves the dot
 	void move();
@@ -336,10 +336,9 @@ int LTexture::getHeight()
 	return mHeight;
 }
 
-
 double RSSiToDistance(int RSSi)
 {
-	return (100 - RSSi) / 5.0;
+	return abs(RSSi);
 }
 
 Dot::Dot()
@@ -381,33 +380,99 @@ void Dot::handleEvent(SDL_Event& e)
 	}
 }
 
-void Dot::computeUserCoordinates(vector<Distance> data) {
+double GetDistance(int B1, int B2, std::vector<std::vector<Distance>> data)
+{
+	for (int i = 0; i < data.size(); i++)
+	{
+		for (int ii = 0; ii < data[i].size(); ii++)
+		{
+			if ((data[i][ii].ID1 == B1 && data[i][ii].ID2 == B2) ||
+				(data[i][ii].ID1 == B2 && data[i][ii].ID2 == B1))
+			{
+				return RSSiToDistance(data[i][ii].RSSi);
+			}
+		}
+	}
+
+	return 0;
+}
+
+int g_P1_ID = 0;
+int g_BID[9];
+int g_B1_ID = 0;
+int g_B2_ID = 0;
+int g_B3_ID = 0;
+
+double circArr[3][10] = { 0 };
+int circIndex = 0;
+int frameCount = 0;
+
+double maxNum = 1.0;
+
+void Dot::computeUserCoordinates(std::vector<std::vector<Distance>> data) {
 	
-	double r1 = 0, r2 = 0, r3 = 0, d = 0, i = 0, j = 0;
+	double r1 = 0, r2 = 0, r3 = 0, d = maxNum, pi = maxNum, pj = maxNum;
 	int px = 0, py = 0;
 	
-	if (data.size() > 0) {
+	if (data.size() >= 1 && data[0].size() >= 1) 
+	{
+		r1 = GetDistance(g_P1_ID, data[0][g_BID[0]].ID1, data);
+		r2 = GetDistance(g_P1_ID, data[0][g_BID[1]].ID1, data);
+		r3 = GetDistance(g_P1_ID, data[0][g_BID[2]].ID1, data);
 
-		//set variables from data
+		if (r1 > maxNum)
+			maxNum = r1;
+		if (r2 > maxNum)
+			maxNum = r2;
+		if (r3 > maxNum)
+			maxNum = r3;
 
+		circArr[0][circIndex] = r1;
+		circArr[1][circIndex] = r2;
+		circArr[2][circIndex] = r3;
+
+		circIndex++;
+		if (circIndex >= 10)
+			circIndex = 0;
+
+		r1 = 0;
+		r2 = 0;
+		r3 = 0;
+		for (int i = 0; i < 10; i++) {
+			r1 += circArr[0][i];
+			r2 += circArr[1][i];
+			r3 += circArr[2][i];
+		}
+
+		r1 /= 10;
+		r2 /= 10;
+		r3 /= 10;
+
+		if (frameCount > 30) {
+			printf("Distances: %f, %f, %f\n", r1, r2, r3);
+			frameCount = 0;
+		}
+		else {
+			frameCount++;
+		}
 
 		//triangulate position using trilateration
 		double tempx = ((r1*r1) - (r2*r2) + (d*d)) / (2*d);
-		double tempy = (((r1*r1) - (r3*r3) + (i*i) + (j*j)) / (2 * j)) - ((i / j) * tempx);
+		double tempy = (((r1*r1) - (r3*r3) + (pi*pi) + (pj*pj)) / (2 * pj)) - ((pi / pj) * tempx);
 
 		//clamp values
 		if (tempx > d)
 			tempx = d;
 		if (tempx < 0)
 			tempx = 0;
-		if (tempy > j)
-			tempy = j;
+		if (tempy > pj)
+			tempy = pj;
 		if (tempy < 0)
 			tempy = 0;
 
 		//convert from cartesian coordinate system to screen space
 		px = (int)((tempx / d) * SCREEN_WIDTH);
-		py = (int)((tempy / j) * SCREEN_HEIGHT);
+		py = (int)((tempy / pj) * SCREEN_HEIGHT);
 
 		//Move the dot left or right
 		mPosX = px;
@@ -443,7 +508,6 @@ void Dot::render(int x, int y)
 {
 	//Show the dot
 	gDotTexture.render(x, SCREEN_HEIGHT - y - DOT_HEIGHT);
-	//gDotTexture2.render(x, SCREEN_HEIGHT - y - DOT_HEIGHT);
 }
 
 bool init()
@@ -559,6 +623,7 @@ int main(int argc, char* args[])
 		{
 			//Main loop flag
 			bool quit = false;
+			bool KeyPressed = false;
 
 			//Event handler
 			SDL_Event e;
@@ -568,10 +633,12 @@ int main(int argc, char* args[])
 			int dotX[dotMaxIndex] = { 0 };
 			int dotY[dotMaxIndex] = { 0 };
 
-			vector<Distance> recievedArr;
+			std::vector<std::vector<Distance>> recievedArr;
 
 			SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 			SDL_RenderClear(gRenderer);
+
+			int counter2 = 0;
 
 			//While application is running
 			while (!quit)
@@ -580,14 +647,58 @@ int main(int argc, char* args[])
 				std::vector<int> ConnectionIndexes = connection.GetIndexes();
 
 				while (recievedArr.size() < ConnectionIndexes.size())
-					recievedArr.push_back(Distance());
+				{ 
+					recievedArr.push_back(std::vector<Distance>());
+				}
 
 				for (unsigned int i = 0; i < ConnectionIndexes.size(); i++)
 				{
-					//Distance recieved;
-					while (connection.Recv(ConnectionIndexes[i], (char*)&(recievedArr[i]), sizeof(Distance)) > 0)
+					Distance recieved;
+					while (connection.Recv(ConnectionIndexes[i], (char*)&recieved, sizeof(Distance)) > 0)
 					{
-						printf("ConnectionID: %d\n\tID1: %d\n\tID2: %d\n\tRSSi: %d\n", ConnectionIndexes[i], recievedArr[i].ID1, recievedArr[i].ID2, recievedArr[i].RSSi);
+						g_P1_ID = recieved.ID2;
+
+						bool found = false;
+						for (unsigned int ii = 0; ii < recievedArr[i].size(); ii++)
+						{
+							/*if (i == 0)
+							{
+								g_P1_ID = recieved.ID2;
+								if (ii == 0 && g_B1_ID == 0)
+								{
+									g_B1_ID = recievedArr[i][ii].ID1;
+								}
+								else if (ii == 1 && g_B2_ID == 0)
+								{
+									g_B2_ID = recievedArr[i][ii].ID1;
+								}
+								else if (ii == 2 && g_B3_ID == 0)
+								{
+									g_B3_ID = recievedArr[i][ii].ID1;
+								}
+
+							}*/
+
+							if (recievedArr[i][ii].ID1 == recieved.ID1 &&
+								recievedArr[i][ii].ID2 == recieved.ID2)
+							{
+								found = true;
+								recievedArr[i][ii].RSSi = recieved.RSSi;
+							}
+						}
+
+						if (!found)
+						{
+							recievedArr[i].push_back(recieved);
+						}
+
+						if (counter2 > 30) {
+							printf("ConnectionID: %d\n\tID1: %d\n\tID2: %d\n\tRSSi: %d\n", ConnectionIndexes[i], recieved.ID1, recieved.ID2, recieved.RSSi);
+							counter2 = 0;
+						}
+						else {
+							counter2++;
+						}
 					}
 				}
 
@@ -598,6 +709,31 @@ int main(int argc, char* args[])
 					if (e.type == SDL_QUIT)
 					{
 						quit = true;
+					}
+					if (e.type == SDL_KEYDOWN && e.key.keysym.sym == SDLK_c)
+					{
+						SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+						SDL_RenderClear(gRenderer);
+						for (int i = 0; i < dotMaxIndex; i++) {
+							dotX[i] = dotX[dotMaxIndex - 1];
+							dotY[i] = dotY[dotMaxIndex - 1];
+						}
+					}
+
+
+					if (e.type == SDL_KEYDOWN && (e.key.keysym.sym >= SDLK_0 || e.key.keysym.sym <= SDLK_9))
+					{
+						KeyPressed = true;
+						g_BID[e.key.keysym.sym - SDLK_0 - 1]++;
+						if (g_BID[e.key.keysym.sym - SDLK_0 - 1] >= recievedArr[0].size())
+						{
+							g_BID[e.key.keysym.sym - SDLK_0 - 1] = 0;
+						}
+						printf("Beacon %d ID: %d\n", e.key.keysym.sym - SDLK_0 - 1, g_BID[e.key.keysym.sym - SDLK_0 - 1]);
+					}
+					else
+					{
+						KeyPressed = false;
 					}
 
 					//Handle input for the dot
@@ -621,11 +757,15 @@ int main(int argc, char* args[])
 					dot.render(dotX[i], dotY[i]);
 				}
 
-				if (dotX[dotIndex-1] != dot.mPosX || dotY[dotIndex-1] != dot.mPosY)
+				if (dotX[dotIndex - 1] != dot.mPosX || dotY[dotIndex - 1] != dot.mPosY) {
+					gDotTexture2.render(dotX[dotIndex] - 2.5, SCREEN_HEIGHT - dotY[dotIndex] - 10 + 2.5);
 					dotIndex++;
+				}
 
 				if (dotIndex >= dotMaxIndex)
 					dotIndex = 1;
+
+				gDotTexture2.render(dotX[dotIndex-1] - 2.5, SCREEN_HEIGHT - dotY[dotIndex-1] - 10 + 2.5);
 
 				//Update screen
 				SDL_RenderPresent(gRenderer);

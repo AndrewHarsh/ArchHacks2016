@@ -1,8 +1,13 @@
-﻿Build started 11/5/2016 4:46:08 PM.
+﻿Build started 11/5/2016 9:44:21 PM.
      1>Project "C:\Github\Repository\ArchHacks2016\SDL_Network_VS_Project\sdl_2.0.4_project\sdl_2.0.4_project\sdl_2.0.4_project.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /sdl /Od /Oy- /D _MBCS /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc120.pdb" /Gd /TP /analyze- /errorReport:prompt Source.cpp
          Source.cpp
+     1>c:\github\repository\archhacks2016\sdl_network_vs_project\sdl_2.0.4_project\sdl_2.0.4_project\source.cpp(385): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\github\repository\archhacks2016\sdl_network_vs_project\sdl_2.0.4_project\sdl_2.0.4_project\source.cpp(387): warning C4018: '<' : signed/unsigned mismatch
+     1>c:\github\repository\archhacks2016\sdl_network_vs_project\sdl_2.0.4_project\sdl_2.0.4_project\source.cpp(728): warning C4018: '>=' : signed/unsigned mismatch
+     1>c:\github\repository\archhacks2016\sdl_network_vs_project\sdl_2.0.4_project\sdl_2.0.4_project\source.cpp(761): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
+     1>c:\github\repository\archhacks2016\sdl_network_vs_project\sdl_2.0.4_project\sdl_2.0.4_project\source.cpp(768): warning C4244: 'argument' : conversion from 'double' to 'int', possible loss of data
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"C:\Github\Repository\ArchHacks2016\SDL_Network_VS_Project\sdl_2.0.4_project\Debug\sdl_2.0.4_project.exe" /INCREMENTAL /NOLOGO SDL2.lib SDL2main.lib SDL2_image.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:\Github\Repository\ArchHacks2016\SDL_Network_VS_Project\sdl_2.0.4_project\Debug\sdl_2.0.4_project.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:\Github\Repository\ArchHacks2016\SDL_Network_VS_Project\sdl_2.0.4_project\Debug\sdl_2.0.4_project.lib" /MACHINE:X86 Debug\Network.obj
          Debug\Source.obj
@@ -11,4 +16,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:02.26
+Time Elapsed 00:00:01.65
