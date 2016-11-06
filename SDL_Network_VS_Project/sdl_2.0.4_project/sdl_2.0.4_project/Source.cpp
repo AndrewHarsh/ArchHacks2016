@@ -338,7 +338,9 @@ int LTexture::getHeight()
 
 double RSSiToDistance(int RSSi)
 {
-	return abs(RSSi);
+	double exp = ((double)(-1 * (RSSi - 67))) / 20;
+
+	return pow(10, exp);
 }
 
 Dot::Dot()
