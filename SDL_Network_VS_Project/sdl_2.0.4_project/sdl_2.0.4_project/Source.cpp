@@ -15,6 +15,12 @@ using namespace std;
 const int SCREEN_WIDTH = 600;
 const int SCREEN_HEIGHT = 600;
 
+const double offsetMetersX = 8;
+const double offsetMetersY = 8;
+
+const double areaWidth = 20;
+const double areaHeight = 20;
+
 int dotIndex = 0;
 const int dotMaxIndex = 5000;
 
@@ -140,6 +146,14 @@ private:
 class Dot
 {
 public:
+	struct AppData
+	{
+		int Press;
+		int R;
+		int G;
+		int B;
+	} Properties;
+
 	//The dimensions of the dot
 	static const int DOT_WIDTH = 5;
 	static const int DOT_HEIGHT = 5;
@@ -163,7 +177,7 @@ public:
 	void render(int x, int y);
 
 	//The X and Y offsets of the dot
-	int mPosX, mPosY;
+	double mPosX, mPosY;
 
 	//The velocity of the dot
 	int mVelX, mVelY;
@@ -338,8 +352,8 @@ int LTexture::getHeight()
 
 double RSSiToDistance(int RSSi)
 {
-	double exp = ((double)(-1 * (RSSi - 67))) / 20;
-
+	double exp = ((double)((-RSSi - 67))) / 20;
+	//return abs(RSSi + 30) / 10.0;
 	return pow(10, exp);
 }
 
@@ -399,21 +413,29 @@ double GetDistance(int B1, int B2, std::vector<std::vector<Distance>> data)
 	return 0;
 }
 
+double r1 = 0;
+double r2 = 0;
+double r3 = 0;
+double b2x = 1.828;
+double b3x = 0.9144;
+double b3y = 1.828;
+
 int g_P1_ID = 0;
 int g_BID[9];
 int g_B1_ID = 0;
 int g_B2_ID = 0;
 int g_B3_ID = 0;
 
-double circArr[3][10] = { 0 };
+const int ArraySize = 25;
+double circArr[3][ArraySize] = { 0 };
 int circIndex = 0;
 int frameCount = 0;
 
 double maxNum = 1.0;
 
 void Dot::computeUserCoordinates(std::vector<std::vector<Distance>> data) {
+	//what is maxnum for
 	
-	double r1 = 0, r2 = 0, r3 = 0, d = maxNum, pi = maxNum, pj = maxNum;
 	int px = 0, py = 0;
 	
 	if (data.size() >= 1 && data[0].size() >= 1) 
@@ -422,33 +444,26 @@ void Dot::computeUserCoordinates(std::vector<std::vector<Distance>> data) {
 		r2 = GetDistance(g_P1_ID, data[0][g_BID[1]].ID1, data);
 		r3 = GetDistance(g_P1_ID, data[0][g_BID[2]].ID1, data);
 
-		if (r1 > maxNum)
-			maxNum = r1;
-		if (r2 > maxNum)
-			maxNum = r2;
-		if (r3 > maxNum)
-			maxNum = r3;
-
 		circArr[0][circIndex] = r1;
 		circArr[1][circIndex] = r2;
 		circArr[2][circIndex] = r3;
 
 		circIndex++;
-		if (circIndex >= 10)
+		if (circIndex >= ArraySize)
 			circIndex = 0;
 
 		r1 = 0;
 		r2 = 0;
 		r3 = 0;
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < ArraySize; i++) {
 			r1 += circArr[0][i];
 			r2 += circArr[1][i];
 			r3 += circArr[2][i];
 		}
 
-		r1 /= 10;
-		r2 /= 10;
-		r3 /= 10;
+		r1 /= ArraySize;
+		r2 /= ArraySize;
+		r3 /= ArraySize;
 
 		if (frameCount > 30) {
 			printf("Distances: %f, %f, %f\n", r1, r2, r3);
@@ -459,51 +474,35 @@ void Dot::computeUserCoordinates(std::vector<std::vector<Distance>> data) {
 		}
 
 		//triangulate position using trilateration
-		double tempx = ((r1*r1) - (r2*r2) + (d*d)) / (2*d);
-		double tempy = (((r1*r1) - (r3*r3) + (pi*pi) + (pj*pj)) / (2 * pj)) - ((pi / pj) * tempx);
+		double tempx = ((r1*r1) - (r2*r2) + (b2x*b2x)) / (2*b2x);
+		double tempy = (((r1*r1) - (r3*r3) + (b3x*b3x) + (b3y*b3y)) / (2 * b3y)) - ((b3x / b3y) * tempx);
 
-		//clamp values
-		if (tempx > d)
-			tempx = d;
-		if (tempx < 0)
-			tempx = 0;
-		if (tempy > pj)
-			tempy = pj;
-		if (tempy < 0)
-			tempy = 0;
-
-		//convert from cartesian coordinate system to screen space
-		px = (int)((tempx / d) * SCREEN_WIDTH);
-		py = (int)((tempy / pj) * SCREEN_HEIGHT);
-
-		//Move the dot left or right
-		mPosX = px;
-		//Move the dot up or down
-		mPosY = py;
+		mPosX = tempx;
+		mPosY = tempy;
 	}
 }
 
 void Dot::move()
 {
-	//Move the dot left or right
-	mPosX += mVelX;
+	////Move the dot left or right
+	//mPosX += mVelX;
 
-	//If the dot went too far to the left or right
-	if ((mPosX < 0) || (mPosX + DOT_WIDTH > SCREEN_WIDTH))
-	{
-		//Move back
-		mPosX -= mVelX;
-	}
+	////If the dot went too far to the left or right
+	//if ((mPosX < 0) || (mPosX + DOT_WIDTH > SCREEN_WIDTH))
+	//{
+	//	//Move back
+	//	mPosX -= mVelX;
+	//}
 
-	//Move the dot up or down
-	mPosY -= mVelY;
+	////Move the dot up or down
+	//mPosY -= mVelY;
 
-	//If the dot went too far up or down
-	if ((mPosY < 0) || (mPosY + DOT_HEIGHT > SCREEN_HEIGHT))
-	{
-		//Move back
-		mPosY += mVelY;
-	}
+	////If the dot went too far up or down
+	//if ((mPosY < 0) || (mPosY + DOT_HEIGHT > SCREEN_HEIGHT))
+	//{
+	//	//Move back
+	//	mPosY += mVelY;
+	//}
 }
 
 void Dot::render(int x, int y)
@@ -606,8 +605,10 @@ void close()
 int main(int argc, char* args[])
 {
 	Connection_t connection;
+	Connection_t connection1;
 
 	connection.Listen(9000);
+	connection1.Listen(9001);
 
 	//Start up SDL and create window
 	if (!init())
@@ -655,6 +656,11 @@ int main(int argc, char* args[])
 
 				for (unsigned int i = 0; i < ConnectionIndexes.size(); i++)
 				{
+					/*while (connection1.Recv(ConnectionIndexes[i], (char*)&dot., sizeof(AppData)) > 0)
+					{
+
+					}*/
+
 					Distance recieved;
 					while (connection.Recv(ConnectionIndexes[i], (char*)&recieved, sizeof(Distance)) > 0)
 					{
@@ -747,8 +753,14 @@ int main(int argc, char* args[])
 				//Move the dot
 				dot.move();
 
-				dotX[dotIndex] = dot.mPosX;
-				dotY[dotIndex] = dot.mPosY;
+				double proportionX = (dot.mPosX + offsetMetersX) / areaWidth;
+				double proprtionY = (dot.mPosY + offsetMetersY) / areaHeight;
+
+				int xPos = proportionX * SCREEN_WIDTH;
+				int yPos = proprtionY * SCREEN_HEIGHT;
+
+				dotX[dotIndex] = xPos;
+				dotY[dotIndex] = yPos;
 
 				//Clear screen
 				SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
